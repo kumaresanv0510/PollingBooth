@@ -1,78 +1,66 @@
-const SampleModel = require('../Model/categorymodel');
 
-exports.create = async(req,res,next)=>{
-    try
-    {
-    
-    const {category_name,category_id} = req.body;
+const CategoryCollection = require("../Model/categorymodel");
 
-    const Doc = new SampleModel({category_name,category_id});
-    await Doc.save();
-    
-    return res.status(201).json({Message:"Document created successfully",data:Doc})
+exports.createCategory = async(req,res,next)=>{
+    try {
+         const { category_name } = req.body;
+         const newCategory = new CategoryCollection({
+            category_name,
+         });
+         const saveCategory = await newCategory.save();
+         return res.status(200).json(saveCategory);
+    } catch (error) {
+        return res.status(500).json({message:error.message})
     }
-    catch(err)
-    {
-    return res.status(400).json({Message:err.message})
+};
+exports.getAll = async (req, res) => {
+    try {
+      const categories = await CategoryCollection.find();
+      res.status(200).json(categories);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching categories', error });
     }
-
-}
-
-exports.getall = async(req,res,next)=> {
-    try{
-        const SampleDoc = await SampleModel.find({},{_id:0});
-        return res.status(200).json({data:SampleDoc})
+};
+exports.getCategoryById = async (req, res) => {
+    try {
+        const {category_id} = req.body;
+        const category = await CategoryCollection.findOne({_id:category_id});
+        if (!category) return res.status(404).json({ message: 'Category not found' });
+        res.status(200).json(category);
+       }
+    catch (error) {
+        res.status(500).json({ message: 'Error fetching category', error });
     }
-    catch(err){
-        return res.status(404).json({message:err.message})
+};
+exports.updateCategory = async (req, res) => {
+    const { category_name, category_id } = req.body;
+    try {
+        const updateCategory = await CategoryCollection.findOne({_id : category_id});
+        if(updateCategory)
+            {
+                updateCategory.category_name = category_name || updateCategory.category_name;
+                await updateCategory.save();
+                res.json({ message: 'Category updated successfully' });
+            }
+            else {
+                res.status(404).json({ message: 'No categories found' });
+            }
     }
-}
-
-exports.update = async (req,res,next)=>{
-    try{
-        const {id} = req.params;
-        const{category_name,category_id} = req.body;
-        const updatedObject = {};
-
-        if(category_name) updatedObject.category_name = category_name;
-        if(category_id) updatedObject.category_id = category_id;
-    
-        const updatedRecord = await SampleModel.findByIdAndUpdate(id,updatedObject, {new:true});
-
-        if(!updatedRecord){
-            return res.status(400).json({error:'Record not found'});
-        }
-        
-        res.status(200).json({message:"Record Updated Successfully", data : updatedRecord})
-        
+    catch (error) {
+        res.status(500).json({ message: 'Error updating category', error });
     }
-    catch(err){
-        return res.status(400).json({message:err.message});
-    }
-}
-
-exports.getbyid = async(req,res)=>{
-    try{
-    const {id} = req.params;
-
-    const data = await SampleModel.findById(id);
-    return res.status(200).json({data});       
-
-    }
-    catch(err){
-        return res.status(400).json({message:err.message});
-    }    
-}
-
-exports.remove = async(req,res)=>{
-    try{
-    const {id} = req.params;
-
-    const data = await SampleModel.findByIdAndDelete(id);
-    return res.status(200).json({Message:"Document deleted successfully"});       
-
-    }
-    catch(err){
-        return res.status(400).json({message:err.message});
-    }    
-}
+};
+exports.deleteCategory = async (req, res) => {
+    const { category_id } = req.body;
+    try {
+        const deletedCategory = await CategoryCollection.findByIdAndDelete({_id : category_id});
+        if (!deletedCategory)
+            {
+            return res.status(404).json({ message: 'Category not found' });
+            }
+        res.status(200).json({ message: 'Category deleted successfully' });
+      }
+       catch (error) {
+        res.status(500).json({ message: 'Error deleting category', error });
+      }
+};

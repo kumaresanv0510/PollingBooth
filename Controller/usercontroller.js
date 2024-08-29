@@ -20,7 +20,7 @@ exports.create = async(req,res,next)=>{
 
 exports.getall = async(req,res,next)=> {
     try{
-        const SampleDoc = await SampleModel.find({},{_id:0});
+        const SampleDoc = await SampleModel.find({});
         return res.status(200).json({data:SampleDoc})
     }
     catch(err){
@@ -59,7 +59,7 @@ exports.getbyid = async(req,res)=>{
     try{
     const {id} = req.params;
 
-    const data = await SampleModel.findById(id);//find({phoneNo:phno,password:password})
+    const data = await SampleModel.findById(id);
     return res.status(200).json({data});       
 
     }
@@ -73,6 +73,9 @@ exports.remove = async(req,res)=>{
     const {id} = req.params;
 
     const data = await SampleModel.findByIdAndDelete(id);
+    if(!data){
+        return res.status(400).json({Message:"User not found"});       
+    }
     return res.status(200).json({Message:"Document deleted successfully"});       
 
     }

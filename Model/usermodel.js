@@ -12,7 +12,7 @@ const sampleSchema = new Schema({
 
 }) 
 
-module.exports = model('usercollections',sampleSchema)
+module.exports = model('usercollection',sampleSchema)
 
 
 
