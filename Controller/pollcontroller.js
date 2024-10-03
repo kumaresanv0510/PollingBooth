@@ -349,8 +349,10 @@ exports.getwin = async (req, res) => {
     const { poll_id } = req.body;
 
     try {
+        
         const pollCollection = await PollCollection.findOne({ _id: poll_id });
 
+        
         if (!pollCollection) {
             return res.status(404).json({ error: 'Poll not found' });
         }
@@ -359,6 +361,7 @@ exports.getwin = async (req, res) => {
         let highestCount = 0;
         let winningOptions = [];
 
+        
         pollCollection.options.forEach(option => {
             totalVotes += option.count;
             if (option.count > highestCount) {
@@ -367,37 +370,35 @@ exports.getwin = async (req, res) => {
             } else if (option.count === highestCount) {
                 winningOptions.push(option.option);
             }
-        });
-
-        const expirationDate = new Date(pollCollection.expirationTime - 19800000);
-
+        });  
+        const expirationDate = new Date(pollCollection.expirationTime - 19800000); 
         const now = Date.now();
-
-        const diffInMs = expirationDate.getTime() - now;
-
-        console.log(diffInMs);
-
-        if (diffInMs < 0 ) {
+        const diffInMs = expirationDate.getTime() - now;    
+        if (diffInMs < 0) {
             pollCollection.status = "closed";
-            pollCollection.winner = winningOptions.length > 0 ? winningOptions[0] : "No winner"; 
-        } 
+            pollCollection.winner = winningOptions.length > 0 ? winningOptions[0] : "No winner";
+        } else {
             
-        else {
-            pollCollection.status == "open";
-
+            pollCollection.status = "open";
+            pollCollection.winner = null; 
         }
-      
-        await pollCollection.save();
-
-       
-        return res.status(200).json({ pollCollection, winner: pollCollection.winner });
-
+    const isPollRunning = diffInMs > 0;
+    const statusMessage = isPollRunning ? 'Poll is still running' : 'Poll has ended';
+    await pollCollection.save();
+     return res.status(200).json({
+    pollCollection,
+    winner: pollCollection.winner,
+    status: pollCollection.status,
+    timeRemaining: isPollRunning ? diffInMs : 0,
+    statusMessage: statusMessage
+});
     } catch (error) {
-
+       
         console.error('Error fetching winner:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
+
 exports.getmultiplePollById = async (req, res) => {
     const { poll_ids } = req.body; 
     try {

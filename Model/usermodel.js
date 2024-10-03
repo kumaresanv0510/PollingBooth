@@ -1,62 +1,42 @@
-const {Schema,model} = require('mongoose')
+const mongoose = require('mongoose');
 
-const sampleSchema = new Schema({
+const Userschema = new mongoose.Schema({
+    user_name: { type: String },
+    user_profile:{ type: String },
+    age: { type: Number },
+    gender: { type: String, enum: ['male', 'female', 'other'] },
+    user_type: { type: String, enum: ['self', 'business', 'community'], default: 'self' },
+    email: { type: String },
+    bio: { type: String },
+    phone_number: { type: String,unique: true },
+    password: { type: String },
+    token: { type: String },
+    googleID: { type: String },
+    user_used_category:[{ type: mongoose.Schema.Types.ObjectId, ref: 'categorycollection' }],
+    created_polls: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PollCollection' }],
+    voted_polls: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PollCollection' }],
+    liked_polls: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PollCollection' }],
+    commented_polls: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PollCollection' }],
+    joined_date: { type: Date, default: Date.now },
+    user_likers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'usercollection' }],
+    user_followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'usercollection' }]
+}, 
+{ timestamps: true }
+);
 
-    user_name:{type:String},
-    e_mail:{type:String},
-    phno:{type:Number},
-    dob:{type:String},
-    gender:{type:String},
-    password:{type:Number},
-    age:{type:Number},
+Userschema.pre('save', function(next) {
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000; // IST is UTC + 5:30
+    const currentIST = new Date(new Date().getTime() + IST_OFFSET);
+    this.joined_date = currentIST;
+    this.createdAt = currentIST;
+    this.updatedAt = currentIST;
+    next();
+});
 
-}) 
-
-module.exports = model('usercollection',sampleSchema)
-
+module.exports = mongoose.model('usercollection',Userschema);
 
 
 
 
 
-// const { Schema, model } = require('mongoose');
 
-// const sampleSchema = new Schema({
-//     user_name: {
-//         type: String,
-//         required: true,  // Makes this field mandatory
-//         trim: true       // Removes any extra spaces
-//     },
-//     e_mail: {
-//         type: String,
-//         required: true,
-//         unique: true,    // Ensures email is unique across documents
-//         trim: true,
-//         lowercase: true  // Converts email to lowercase
-//     },
-//     phno: {
-//         type: Number,
-//         required: true
-//     },
-//     dob: {               // Changed to lowercase for consistency
-//         type: Date,      // Use Date type for date fields
-//         required: true
-//     },
-//     gender: {
-//         type: String,
-//         enum: ['male', 'female', 'other'], // Restricts gender to specific values
-//         required: true
-//     },
-//     password: {
-//         type: String,
-//         required: true
-//     },
-//     age: {
-//         type: Number,
-//         required: true
-//     }
-// }, {
-//     timestamps: true  // Adds createdAt and updatedAt fields
-// });
-
-// module.exports = model('User', sampleSchema);
