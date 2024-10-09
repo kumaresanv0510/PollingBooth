@@ -18,7 +18,6 @@ router.post('/getoptionofvote', getoptionofvote);
 router.post('/totalvote',getTotalVotes);
 router.post('/searchPolls', searchPolls);
 
-
 // router.post('/update/:id',update);
 // router.get('/getbyid/:id',getbyid);
 // router.post('/delete/:id',remove);
