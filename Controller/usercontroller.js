@@ -1,42 +1,167 @@
-const SampleModel = require('../Model/usermodel');
+const SampleModel = require('../Model/usermodel'); // Update this path if needed
+const Usermodel = require('../Model/usermodel'); // Add this line for Usermodel
+const commentscollection = require('../Model/commentsmodel');
 
 
 
-// Create User
-exports.createUser = async (req, res) => {
+
+
+////login user
+
+exports.loginuser = async(req,res)=>{
+
     try {
-        const { user_name, email, phone_number, password,age,gender} = req.body;
+        const { phone_number,password }=req.body;
 
-        // Build the query object
-        let query = { email };
-        if (phone_number) {
-            query = { $or: [{ email }, { phone_number }] };
-        }
+        const existinguser = await Usermodel.findOne({phone_number});
 
-        const existingUser = await SampleModel.findOne(query);
-        if (existingUser) {
-            return res.status(409).json({ message: "User already exists",existingUser});
-        }
+        if(!existinguser)
+            {
+               return res.status(400).json({ message:"user not found"})
+            }
+        const isValidPassword = await bcrypt.compare(password,existinguser.password);
+        if(!isValidPassword)
+            {
+                return res.status(400).json({message:"Password is incorrect"});
+            }
+        
+        const token = jwt.sign({ id: existinguser._id }, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const token = jwt.sign({ phone_number }, process.env.JWT_SECRET_KEY);
-        const newUser = new Usermodel({
-            user_name,
-            email,
-            password: hashedPassword,
-            phone_number,
-            age,
-            gender,
-            token
-        });
+        return res.status(200).json({
+            user:existinguser,
+            token,
+            message:"user found"
+        })
 
-        const savedUser = await newUser.save();
-        return res.status(201).json({ savedUser });
+        
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({message:error.message})
     }
-};
+}
 
+exports.create = async(req,res,next)=>{
+    try
+    {
+    
+    const {user_name,e_mail,phno,dob,gender,password,age} = req.body;
+
+    const Doc = new SampleModel({user_name,e_mail,phno,dob,gender,password,age});
+    await Doc.save();
+    
+    return res.status(201).json({Message:"Document created successfully",data:Doc})
+    }
+    catch(err)
+    {
+    return res.status(400).json({Message:err.message})
+    }
+
+}
+
+exports.getall = async(req,res,next)=> {
+    try{
+        const SampleDoc = await SampleModel.find({});
+        return res.status(200).json({data:SampleDoc})
+    }
+    catch(err){
+        return res.status(404).json({message:err.message})
+    }
+ }
+
+exports.update = async (req,res,next)=>{
+    try{
+        const {id} = req.params;
+        const{user_name,e_mail,phno,password,gender,age} = req.body;
+
+        const updatedObject = {};
+
+        if(user_name) updatedObject.user_name = user_name;
+        if(e_mail) updatedObject.e_mail = e_mail;
+        if(phno) updatedObject.phno = phno;
+        if(password) updatedObject.password = password;
+        if(gender) updatedObject.gender = gender;
+        if(age) updatedObject.age = age;
+        const updatedRecord = await SampleModel.findByIdAndUpdate(id,updatedObject, {new:true});
+
+        if(!updatedRecord){
+            return res.status(400).json({error:'Record not found'});
+        }
+        
+        res.status(200).json({message:"Record Updated Successfully", data : updatedRecord})
+        
+    }
+    catch(err){
+        return res.status(400).json({message:err.message});
+    }
+}
+
+exports.getbyid = async(req,res)=>{
+    try{
+    const {id} = req.params;
+
+    const data = await SampleModel.findById(id);
+    return res.status(200).json({data});       
+
+    }
+    catch(err){
+        return res.status(400).json({message:err.message});
+    }    
+}
+
+exports.remove = async(req,res)=>{
+    try{
+    const {id} = req.params;
+
+    const data = await SampleModel.findByIdAndDelete(id);
+    if(!data){
+        return res.status(400).json({Message:"User not found"});       
+    }
+    return res.status(200).json({Message:"Document deleted successfully"});       
+
+    }
+    catch(err){
+        return res.status(400).json({message:err.message});
+    }    
+}
+
+// //////sign up page
+
+exports.signup = async(req,res,next)=>{
+    try
+    {
+    
+    const {user_name,e_mail,phno,dob,gender,password,age} = req.body;
+    const Doc = new SampleModel({user_name,e_mail,phno,dob,gender,password,age});
+    await Doc.save();
+    
+    return res.status(201).json({Message:"Sign up Sucessfully",data:Doc})
+    }
+    catch(err)
+    {
+    return res.status(400).json({Message:err.message})
+    }
+
+}
+
+// /////login page
+
+
+exports.login = async(req,res)=>{
+    try{
+    const {phno,password} = req.body;
+
+    const data = await SampleModel.findOne({phno,password});
+    if(!data){
+        return res.status(404).json({Message:"Invalid phoneNO or password"})
+    }
+    return res.status(200).json({Message:"Login successfully",data:data});       
+
+    }
+    catch(err){
+        return res.status(400).json({message:err.message});
+    }    
+}
+
+//////follow and unfollow
 
 exports.addandremovefollower = async (req, res) => {
     const { follow_user_id, user_id } = req.body;
@@ -74,160 +199,63 @@ exports.addandremovefollower = async (req, res) => {
     }
 };
 
+/////get profile
 
-////login user
+exports.getProfile = async (req, res) => {
+    try {
+        const { user_id } = req.body; // identifier can be phone number or email
 
-// exports.loginuser = async(req,res)=>{
+        const user = await Usermodel.findOne({ _id : user_id})
+        .populate([
+            { path: 'created_polls', model: 'PollCollection', select: '_id ', 
+                // populate:([
+                //     {path: 'category', model: 'CategoryCollection', select: '_id category_name'},
+                //     {path: 'createdBy', model: 'UserCollection', select: '_id user_name'}
+                // ])
+            },
+            { path: 'created_polls.options', model: 'PollCollection', select: '_id option count' },
 
-//     try {
-//         const { phone_number,password }=req.body;
+            { path: 'created_polls.likers', model: 'PollCollection'},
+            { path: 'created_polls.voters', model: 'PollCollection'},
 
-//         const existinguser = await Usermodel.findOne({phone_number});
 
-//         if(!existinguser)
-//             {
-//                return res.status(400).json({ message:"user not found"})
-//             }
-//         const isValidPassword = await bcrypt.compare(password,existinguser.password);
-//         if(!isValidPassword)
-//             {
-//                 return res.status(400).json({message:"Password is incorrect"});
-//             }
-        
-//         const token = jwt.sign({ id: existinguser._id }, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
 
-//         return res.status(200).json({
-//             user:existinguser,
-//             token,
-//             message:"user found"
-//         })
+            { path: 'voted_polls', model: 'PollCollection', select: '_id created_date poll_id title category question options status  isActive expirationTime createdBy likers voters', 
+                populate:{path: 'createdBy', model: 'UserCollection', select: '_id user_name'},
+            },
+            { path: 'voted_polls.options', model: 'PollCollection', select: '_id option count' },
 
-        
-//     } catch (error) {
-//         return res.status(500).json({message:error.message})
-//     }
-// }
+            { path: 'voted_polls.likers', model: 'PollCollection'},
+            { path: 'voted_polls.voters', model: 'PollCollection'},
 
-// exports.create = async(req,res,next)=>{
-//     try
-//     {
-    
-//     const {user_name,e_mail,phno,dob,gender,password,age} = req.body;
 
-//     const Doc = new SampleModel({user_name,e_mail,phno,dob,gender,password,age});
-//     await Doc.save();
-    
-//     return res.status(201).json({Message:"Document created successfully",data:Doc})
-//     }
-//     catch(err)
-//     {
-//     return res.status(400).json({Message:err.message})
-//     }
 
-// }
+            { path: 'liked_polls', model: 'PollCollection', select: '_id created_date poll_id title category question options status  isActive expirationTime createdBy likers voters', 
+                populate:{path: 'createdBy', model: 'UserCollection', select: '_id user_name'},
+            },
+            { path: 'liked_polls.options', model: 'PollCollection', select: '_id option count' },
 
-exports.getall = async(req,res,next)=> {
-    try{
-        const SampleDoc = await SampleModel.find({});
-        return res.status(200).json({data:SampleDoc})
+            { path: 'liked_polls.likers', model: 'PollCollection'},
+            { path: 'liked_polls.voters', model: 'PollCollection'},
+
+
+            { path: 'commented_polls', model: 'commentscollection', select: '_id comment_id poll_id comment likers Replies' },
+            { path: 'commented_polls.Replies', model: 'commentscollection', select: '_id  reply_id poll_id  reply_msg likers' },
+
+            { path: 'user_likers', model: 'usercollection', select: '_id user_name' },
+            { path: 'user_used_category', model: 'CategoryCollection', select: '_id category_id category_name' },
+            { path: 'user_followers', model: 'usercollection', select: '_id user_name' }
+        ]);
+
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        return res.status(200).json({ user });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
     }
-    catch(err){
-        return res.status(404).json({message:err.message})
-    }
- }
-
-// exports.update = async (req,res,next)=>{
-//     try{
-//         const {id} = req.params;
-//         const{user_name,e_mail,phno,password,gender,age} = req.body;
-
-//         const updatedObject = {};
-
-//         if(user_name) updatedObject.user_name = user_name;
-//         if(e_mail) updatedObject.e_mail = e_mail;
-//         if(phno) updatedObject.phno = phno;
-//         if(password) updatedObject.password = password;
-//         if(gender) updatedObject.gender = gender;
-//         if(age) updatedObject.age = age;
-//         const updatedRecord = await SampleModel.findByIdAndUpdate(id,updatedObject, {new:true});
-
-//         if(!updatedRecord){
-//             return res.status(400).json({error:'Record not found'});
-//         }
-        
-//         res.status(200).json({message:"Record Updated Successfully", data : updatedRecord})
-        
-//     }
-//     catch(err){
-//         return res.status(400).json({message:err.message});
-//     }
-// }
-
-// exports.getbyid = async(req,res)=>{
-//     try{
-//     const {id} = req.params;
-
-//     const data = await SampleModel.findById(id);
-//     return res.status(200).json({data});       
-
-//     }
-//     catch(err){
-//         return res.status(400).json({message:err.message});
-//     }    
-// }
-
-// exports.remove = async(req,res)=>{
-//     try{
-//     const {id} = req.params;
-
-//     const data = await SampleModel.findByIdAndDelete(id);
-//     if(!data){
-//         return res.status(400).json({Message:"User not found"});       
-//     }
-//     return res.status(200).json({Message:"Document deleted successfully"});       
-
-//     }
-//     catch(err){
-//         return res.status(400).json({message:err.message});
-//     }    
-// }
-
-// //////sign up page
-
-// exports.signup = async(req,res,next)=>{
-//     try
-//     {
-    
-//     const {user_name,e_mail,phno,dob,gender,password,age} = req.body;
-//     const Doc = new SampleModel({user_name,e_mail,phno,dob,gender,password,age});
-//     await Doc.save();
-    
-//     return res.status(201).json({Message:"Sign up Sucessfully",data:Doc})
-//     }
-//     catch(err)
-//     {
-//     return res.status(400).json({Message:err.message})
-//     }
-
-// }
-
-// /////login page
-
-
-// exports.login = async(req,res)=>{
-//     try{
-//     const {phno,password} = req.body;
-
-//     const data = await SampleModel.findOne({phno,password});
-//     if(!data){
-//         return res.status(404).json({Message:"Invalid phoneNO or password"})
-//     }
-//     return res.status(200).json({Message:"Login successfully",data:data});       
-
-//     }
-//     catch(err){
-//         return res.status(400).json({message:err.message});
-//     }    
-// }
+};
 
 

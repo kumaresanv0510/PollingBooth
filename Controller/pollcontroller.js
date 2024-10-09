@@ -473,6 +473,104 @@ exports.getmultiplePollById = async (req, res) => {
     }
 };
 
+//option on votes
+exports.getoptionofvote = async (req, res) => {
+    const { poll_id, user_id } = req.body;
+    try {
+      const poll = await PollCollection.findById({_id:poll_id});
+      if (!poll) {
+        return res.status(404).json({ message: 'Poll not found' });
+      }
+  
+      // Find the option where the user_id is present in the voters array
+      let votedOption = null;
+      poll.options.forEach((option) => {
+        if (option.voters.includes(user_id)) {
+          votedOption = option.option;
+        }
+      });
+  
+      if (votedOption) {
+        return res.status(200).json({ votedOption });
+      } else {
+        return res.status(404).json({ message: 'User has not voted for this poll' });
+      }
+    } catch (error) {
+      console.error('Error fetching voted option:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+
+///get total votes
+
+exports.getTotalVotes = async (req, res) => {
+    const { poll_id } = req.body;
+
+    try {
+        const poll = await PollCollection.findOne({ _id : poll_id });
+
+        if (!poll) {
+            return res.status(404).json({ error: 'Poll not found' });
+        }
+
+        const totalVotes = poll.options.reduce((total, option) => total + option.count, 0);
+
+        return res.json({ poll_id, totalVotes });
+    } catch (error) {
+        console.error('Error fetching poll:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+};
+exports.searchPolls = async (req, res) => {
+    try {
+        const { query } = req.body; 
+
+        if (typeof query !== 'string' || !query.trim()) {
+            return res.status(400).json({ error: 'Invalid query' });
+        }
+
+        console.log('Search query:', query.trim()); 
+        
+        const foundPolls = await PollCollection.aggregate([
+            {
+                $lookup: {
+                    from: 'categorycollections',
+                    localField: 'category',
+                    foreignField: '_id',
+                    as: 'categoryInfo'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$categoryInfo',
+                    preserveNullAndEmptyArrays: true // Optionally handle documents without categories
+                }
+            },
+            {
+                $match: {
+                    $or: [
+                        { 'categoryInfo.category_name': { $regex: query.trim(), $options: 'i' } },
+                        { 'title': { $regex: query.trim(), $options: 'i' } },
+                        { 'question': { $regex: query.trim(), $options: 'i' } },
+                        { 'poll_id': { $regex: query.trim(), $options: 'i' } }
+                    ]
+                }
+            },
+            {
+                $project: {
+                   "poll_id": "$_id",
+                    "_id": 0
+                 
+                }
+            }
+        ]);
+
+        return res.status(200).json({ poll_ids: foundPolls });
+    } catch (error) {
+        console.error('Error searching polls:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+};
 
 
 

@@ -140,6 +140,51 @@ exports.getCommentsByPollId = async (req, res) => {
     }
 };
 
+//getliked comments
+exports.getLikedComments = async (req, res) => {
+    
+    const { user_id }= req.body;
+    
+    try {
+      
+      const likedComments = await CommentCollection.find({ likers: { $elemMatch: { $eq: user_id } } });
+      
+   
+     const commentIds = likedComments.map(comment => comment._id);
+    
+     return res.status(200).json({ commentIds });    
+    } 
+    catch (error) {
+      console.error('Error fetching liked comments:', error);
+      return res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+/////getlikedreplies
+exports.getLikedReplies = async (req, res) => {
+    const { user_id } = req.body;
+
+    try {
+       
+        const likedComments = await CommentCollection.find({
+            "replies.likers": user_id
+        });
+
+        
+        const replyIds = likedComments.flatMap(comment =>
+            comment.replies
+                .filter(reply => reply.likers.includes(user_id))
+                .map(reply => reply._id)
+        );
+
+        return res.status(200).json({ replyIds });
+    } catch (error) {
+        console.error('Error fetching liked replies:', error);
+        return res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+
 
 // exports.create = async(req,res,next)=>{
 //     try
